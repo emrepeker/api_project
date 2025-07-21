@@ -1,19 +1,20 @@
+from enum import Enum
+
 from fastapi import FastAPI
+
+
+class LogName(str, Enum):
+    login = "login"
+    logout = "logout"
+    sign_in = "sign_in"
+
 
 app = FastAPI()
 
-@app.get("/")
-async def root():
-    return {"message":"Hello World"}    
-#Path parameters
-
-#Special occasion   item_id == user_id
-@app.get("/items/me")                # This has to come before from {item_id} /me has a priority
-async def read_user_me():
-    return {"Item id":"Current User"}
-
-
-@app.get("/items/{item_id}")
-async def read_item(item_id: int): #You can pass the type of parameter. May create parsing problems
-    return {"Item id ":  item_id}   
-   
+@app.get("/log/{log_name}")
+async def log_ops(log_name : LogName): 
+    if log_name == "login":
+        return {"log_name" : log_name, "message": "You at login page"}
+    if log_name == "logout":
+        return {"log_name" : log_name, "message":"You at logout page"}
+    return {"log_name": log_name,"message":"you at sign-in page bye bye "}
