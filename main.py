@@ -18,3 +18,7 @@ async def log_ops(log_name : LogName):
     if log_name == "logout":
         return {"log_name" : log_name, "message":"You at logout page"}
     return {"log_name": log_name,"message":"you at sign-in page bye bye "}
+#Path parameter : type -> path
+@app.get("/files/{file_path:path}")
+async def file_ops(file_path : str):
+    return {"file_path": file_path}
