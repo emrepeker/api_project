@@ -13,9 +13,11 @@ class LogName(str, Enum):
     logout = "logout"
     sign_in = "sign_in"
 #Creating Schema pydantic BaseModel###########
-class PostDataSchema(BaseModel):
+class Post(BaseModel):
     title : str
     content : str
+    published : bool = True
+    rating : int | None = None
 ##############################################    
     
     
@@ -34,17 +36,23 @@ async def log_ops(log_name : LogName):
 async def file_ops(file_path : str):
     return {"file_path": file_path} # --> if path parameter has / then files//home/main.py is possible -> unreachable
 
-#Creating a post method 
+@app.get("/posts")
+async def get_posts():
+    return {"data" : "This is your posts"}
 
-@app.post("/createpost")
-async def create(payLoad : dict = Body(...)):  # JSON Body will converted into dictionary
-    return { "new_post" : f"title:  {payLoad['title']}" +    f" content: {payLoad['content']}"}
-#Using Schema in Post method #####################
-@app.post("/schematest")
-async def schema(post : PostDataSchema):
+
+
+@app.post("/posts")
+async def create_post(post : Post):
     print(post)
-    return {"New Post":"New post is created"}
-##################################################
+    print(post.model_dump())
+    return {"data" : post}
+        
+    
+
+
+
+
 
 #Query parameters 
 @app.get("/items") 
