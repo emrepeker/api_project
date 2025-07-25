@@ -28,5 +28,9 @@ async def file_ops(file_path : str):
 
 @app.post("/createpost")
 async def create(payLoad : dict = Body(...)):  # JSON Body will converted into dictionary
-    
-    return { "new_post" : f"title:  {payLoad['title']}" + f" content: {payLoad['content']}"}
+    return { "new_post" : f"title:  {payLoad['title']}" +    f" content: {payLoad['content']}"}
+
+#Query parameters 
+@app.get("/items") 
+async def get_page(skip : int = 0, limit : int = 10):
+    return {"message" : f"{skip}" + " Other " + f"{limit}"}
