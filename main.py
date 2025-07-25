@@ -1,14 +1,24 @@
 from enum import Enum
 
 from fastapi import FastAPI
-from fastapi.params import Body 
+from fastapi.params import Body #JSON Body to dict
+
+#############################################     
+from pydantic import BaseModel #Schema Check
+#############################################
 
 
 class LogName(str, Enum):
     login = "login"
     logout = "logout"
     sign_in = "sign_in"
-
+#Creating Schema pydantic BaseModel###########
+class PostDataSchema(BaseModel):
+    title : str
+    content : str
+##############################################    
+    
+    
 
 app = FastAPI()
 
@@ -29,6 +39,12 @@ async def file_ops(file_path : str):
 @app.post("/createpost")
 async def create(payLoad : dict = Body(...)):  # JSON Body will converted into dictionary
     return { "new_post" : f"title:  {payLoad['title']}" +    f" content: {payLoad['content']}"}
+#Using Schema in Post method #####################
+@app.post("/schematest")
+async def schema(post : PostDataSchema):
+    print(post)
+    return {"New Post":"New post is created"}
+##################################################
 
 #Query parameters 
 @app.get("/items") 
