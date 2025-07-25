@@ -1,6 +1,7 @@
 from enum import Enum
 
 from fastapi import FastAPI
+from fastapi.params import Body 
 
 
 class LogName(str, Enum):
@@ -21,4 +22,11 @@ async def log_ops(log_name : LogName):
 #Path parameter : type -> path
 @app.get("/files/{file_path:path}")
 async def file_ops(file_path : str):
-    return {"file_path": file_path}
+    return {"file_path": file_path} # --> if path parameter has / then files//home/main.py is possible -> unreachable
+
+#Creating a post method 
+
+@app.post("/createpost")
+async def create(payLoad : dict = Body(...)):  # JSON Body will converted into dictionary
+    
+    return { "new_post" : f"title:  {payLoad['title']}" + f" content: {payLoad['content']}"}
