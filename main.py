@@ -53,6 +53,16 @@ async def create_post(post : Post):
     my_posts[leng -1]["id"] = my_posts[leng -2]["id"] + 1
     print(my_posts)
     return {"data" : my_posts[leng - 1]}
+
+
+#Delete spesific post
+@app.delete("/posts/{id}", status_code=status.HTTP_202_ACCEPTED)
+async def delete_post(id : int):
+    if id >= 0 and id <= len(my_posts) - 1: #Valid ID ordered list can cause errors but its good enough for development
+        del my_posts[id]
+    return {"Deletion Succes" : f"posts with {id} is succesfully deleted" }    
+        
+         
         
     
 
