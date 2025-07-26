@@ -1,6 +1,6 @@
 from enum import Enum
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.params import Body #JSON Body to dict
 
 #############################################     
@@ -16,9 +16,13 @@ class LogName(str, Enum):
 class Post(BaseModel):
     title : str
     content : str
-    published : bool = True
-    rating : int | None = None
+   
 ##############################################    
+
+################# HARD CODING SOME DATA    #########################
+my_posts = [{"title":"title of post 1","content":"content of post 1", "id": 0},
+            {"title":"favorite foods","content":"I like pizza","id" : 1}]
+##########################################
     
     
 
@@ -36,17 +40,28 @@ async def log_ops(log_name : LogName):
 async def file_ops(file_path : str):
     return {"file_path": file_path} # --> if path parameter has / then files//home/main.py is possible -> unreachable
 
+#Get all posts
 @app.get("/posts")
 async def get_posts():
-    return {"data" : "This is your posts"}
+    return {"data" : my_posts} #auto serialazition 
+#Get certain post with id
+@app.get("/posts/{id}")
+async def get_post(id : int,response : Response):
+    if id > my_posts[len(my_posts) - 1]["id"] or id < 0:
+        response.status_code = 404
+        return {"404 Error":"There is no post with this is ID"}                          #Need to return otherwise it doesn't stop
+    return {id : my_posts[id]}
 
 
 
 @app.post("/posts")
 async def create_post(post : Post):
-    print(post)
-    print(post.model_dump())
-    return {"data" : post}
+    my_posts.append(post.model_dump()) # post -> dict
+    #unique id 
+    leng = len(my_posts)
+    my_posts[leng -1]["id"] = my_posts[leng -2]["id"] + 1
+    print(my_posts)
+    return {"data" : my_posts[leng - 1]}
         
     
 
