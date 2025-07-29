@@ -10,8 +10,8 @@ from pydantic import BaseModel #Schema Check
 
 while True:  # try until we get a database connection   
     try:
-        conn = psycopg.connect(host='localhost', dbname='fastapi', user='postgres', password='Emreemre1441', row_factory=dict_row)
-        cursor = conn.cursor # cursor is used to use database ops
+        conn = psycopg.connect(host='localhost', dbname='fastapi', user='postgres', password='Emreemre1441', row_factory=dict_row) # Bad practice to push this git repo
+        cursor = conn.cursor() # cursor is used to use database ops
         print("Database connection is established")
         break
     except Exception as error:
@@ -50,7 +50,10 @@ async def file_ops(file_path : str):
 #Get all posts
 @app.get("/posts")
 async def get_posts():
-    return {"data" : my_posts} #auto serialazition 
+    cursor.execute("""SELECT * FROM posts """) 
+    posts = cursor.fetchall()
+    print(posts)
+    return {"data" : posts} #auto serialazition 
 
 #Get certain post with id
 @app.get("/posts/{id}")
@@ -65,12 +68,13 @@ async def get_post(id : int):
 #Need to pass status code to path decorator
 @app.post("/posts", status_code=status.HTTP_201_CREATED)
 async def create_post(post : Post):
-    my_posts.append(post.model_dump()) # post -> dict
-    #unique id 
-    leng = len(my_posts)
-    my_posts[leng -1]["id"] = my_posts[leng -2]["id"] + 1
-    print(my_posts)
-    return {"data" : my_posts[leng - 1]}
+    post_dict = post.model_dump()    
+    title = post_dict["title"]
+    content = post_dict["content"]
+    published = post_dict["published"]
+    cursor.execute("""INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING *; """,(title, content, published))
+    new_post = cursor.fetchone()
+    return {"data" : new_post}        
 
 
 #Delete spesific post
