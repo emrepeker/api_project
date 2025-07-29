@@ -58,22 +58,38 @@ async def get_posts():
 #Get certain post with id
 @app.get("/posts/{id}")
 async def get_post(id : int):
-    if id > my_posts[len(my_posts) - 1]["ixd"] or id < 0: # is id in range
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="This ID is not in the posts ID range")
-        #response.status_code = status.HTTP_404_NOT_FOUND
-        #return {"404 Error":"There is no post with this is ID"}       #Need to return otherwise it doesn't stop
-    return {id : my_posts[id]}
+
+    cursor.execute("""SELECT EXISTS (SELECT 1 FROM posts WHERE id = %s ) """, (id,)) # Returns dict true or false
+    result = cursor.fetchone()
+    exists = result['exists'] # --> boolean value
+    
+    if exists:
+        #logic
+        cursor.execute("""SELECT * FROM posts WHERE id = %s """,(id,)) # Important to pass , after !!!
+        my_row = cursor.fetchone()
+        return {"The post : " : my_row}
+    else:
+        #error message no content with that ID    
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail= f"This {id} is not in the database")
+        
+    
+    
 
 #Need to pass status code to path decorator
 @app.post("/posts", status_code=status.HTTP_201_CREATED)
 async def create_post(post : Post):
-    post_dict = post.model_dump()    
-    title = post_dict["title"]
+    post_dict = post.model_dump()  # post -> dict
+        
+    title = post_dict["title"]      # Data Save
     content = post_dict["content"]
     published = post_dict["published"]
-    cursor.execute("""INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING *; """,(title, content, published))
-    new_post = cursor.fetchone()
+    
+    
+    cursor.execute("""INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING *; """,(title, content, published)) # SQL Injection protected
+    
+    new_post = cursor.fetchone() # Fetch returning data
+    conn.commit() # Commit database changes
+    
     return {"data" : new_post}        
 
 
