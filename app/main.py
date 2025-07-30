@@ -1,12 +1,42 @@
 from fastapi import FastAPI, Response,HTTPException, status
 from fastapi.params import Body #JSON Body to dict
-import psycopg
+import psycopg # Python -> PostgreSQL Connection Library
 from psycopg.rows import dict_row # To Return Column Names 
 import time # to delay while
+
+import sqlalchemy # ORM style database controller
+from sqlalchemy import create_engine, text # Object for establishing connection
 
 #############################################     
 from pydantic import BaseModel #Schema Check
 #############################################
+
+while True:
+    try:
+        engine = create_engine("postgresql+psycopg://postgres:Emreemre1441@localhost:5432/fastapi") 
+        #TEST CONNECTIVITY
+        engine_connect = engine.connect()
+        result = engine_connect.execute(text("SELECT "))
+        print(result.scalar)
+        print("sqlalchemy -> postgress connection is established")
+        break
+    except Exception as error:
+        print("SQLalchemy -> Postgres DATABASE Connection failed")
+        print("Error :", error)
+        time.sleep(3)    
+
+
+
+
+
+# engine = create_engine("postgresql+psycopg://postgres:Emreemre1441@localhost:5432/fastapi")
+# # connectivity test
+
+# with engine.connect() as comm:
+#     result = comm.execute(text("SELECT 1"))
+#     print(result.scalar())
+    
+
 
 while True:  # try until we get a database connection   
     try:
@@ -17,7 +47,7 @@ while True:  # try until we get a database connection
     except Exception as error:
         print("Connection to database is failed")
         print("Error : ", error)
-        time.sleep(3)
+        time.sleep(2)
 
 
 
@@ -27,15 +57,11 @@ while True:  # try until we get a database connection
 class Post(BaseModel):
     title : str
     content : str
-    published : bool = True
+    published : bool =  True # defalult to  True if doesnt passed by user
 
    
 ##############################################    
 
-################# HARD CODING SOME DATA LATER THIS WILL BE A DATABASE   #########################
-my_posts = [{"title":"title of post 1","content":"content of post 1", "id": 0},
-            {"title":"favorite foods","content":"I like pizza","id" : 1}]
-#################################################################################################
     
     
 
@@ -97,6 +123,7 @@ async def create_post(post : Post):
 @app.delete("/posts/{id}", status_code=status.HTTP_202_ACCEPTED)
 async def delete_post(id : int):
     cursor.execute("""DELETE FROM posts WHERE id = %s RETURNING *;""",(id,))
+    
     deleted_post = cursor.fetchone()
     conn.commit()
     return {"Succesfully Deleted " : deleted_post }
@@ -119,9 +146,11 @@ async def update_post(id :int, post : Post):
 async def patch_post(id: int, post : dict = Body(...)):
     print(post.keys())
     
+    #Update Given values
     for column in post.keys():
         cursor.execute(f"""UPDATE posts SET {column} = %s WHERE id = %s RETURNING *; """, (post[column],id))
         print(column + " Succesfully updated")
+        
     patched_post = cursor.fetchone()
     conn.commit()
     return {"This Post is Updated": patched_post}
