@@ -96,9 +96,14 @@ async def create_post(post : Post):
 #Delete spesific post
 @app.delete("/posts/{id}", status_code=status.HTTP_202_ACCEPTED)
 async def delete_post(id : int):
-    if id >= 0 and id <= len(my_posts) - 1: #Valid ID ordered list can cause errors but its good enough for development
-        del my_posts[id]
-    return {"Deletion Succes" : f"posts with {id} is succesfully deleted" }    
+    cursor.execute("""DELETE FROM posts WHERE id = %s RETURNING *;""",(id,))
+    deleted_post = cursor.fetchone()
+    conn.commit()
+    return {"Succesfully Deleted " : deleted_post }
+    
+    # if id >= 0 and id <= len(my_posts) - 1: #Valid ID ordered list can cause errors but its good enough for development
+    #     del my_posts[id]
+    # return {"Deletion Succes" : f"posts with {id} is succesfully deleted" }    
 
 
 #Update Spesific post
