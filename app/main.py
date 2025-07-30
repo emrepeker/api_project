@@ -101,36 +101,31 @@ async def delete_post(id : int):
     conn.commit()
     return {"Succesfully Deleted " : deleted_post }
     
-    # if id >= 0 and id <= len(my_posts) - 1: #Valid ID ordered list can cause errors but its good enough for development
-    #     del my_posts[id]
-    # return {"Deletion Succes" : f"posts with {id} is succesfully deleted" }    
 
 
 #Update Spesific post
 @app.put("/posts/{id}")
 async def update_post(id :int, post : Post):
-    post = post.model_dump() # post is dict
-    if id >= 0 and id <= len(my_posts) - 1:
-        my_posts[id] = post
-        return {"data": post}
-    else:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                                detail="ID not found")
-
+    post_dict = post.model_dump()
+    cursor.execute("""UPDATE posts SET title = %s, content=%s, published=%s  WHERE id = %s  RETURNING *;""", (post_dict['title'], post_dict['content'],post_dict['published'] ,id))
+    
+    updated_post = cursor.fetchone()
+    conn.commit()
+    return {"This Post is updated" : updated_post}
+    
 
 #Patch Spesific post
 @app.patch("/posts/{id}")      
 async def patch_post(id: int, post : dict = Body(...)):
-    post_dict = post # post -> dict
-    print(post_dict)
-    if id >= 0 and id <= len(my_posts) - 1:
-        for p in post_dict.keys():
-            my_posts[id][p] = post_dict[p]
-            
-    else:
-        HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                      detail="Not Valid ID")    
+    print(post.keys())
     
+    for column in post.keys():
+        cursor.execute(f"""UPDATE posts SET {column} = %s WHERE id = %s RETURNING *; """, (post[column],id))
+        print(column + " Succesfully updated")
+    patched_post = cursor.fetchone()
+    conn.commit()
+    return {"This Post is Updated": patched_post}
+        
     
          
         
