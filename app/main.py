@@ -1,8 +1,11 @@
-from fastapi import FastAPI, Response,HTTPException, status
+from fastapi import FastAPI, Response,HTTPException, status, Depends 
 from fastapi.params import Body #JSON Body to dict
 import psycopg # Python -> PostgreSQL Connection Library
 from psycopg.rows import dict_row # To Return Column Names 
 import time # to delay while
+from sqlalchemy.orm import Session
+from . import models
+from .database import engine, SessionLocal
 
 import sqlalchemy # ORM style database controller
 from sqlalchemy import create_engine, text # Object for establishing connection
@@ -11,30 +14,40 @@ from sqlalchemy import create_engine, text # Object for establishing connection
 from pydantic import BaseModel #Schema Check
 #############################################
 
-while True:
+
+
+#Creates tables under models
+models.Base.metadata.create_all(bind=engine)
+
+#Every time we get request. We will call this function to reach session
+def get_db():
+    db = SessionLocal()
     try:
-        engine = create_engine("postgresql+psycopg://postgres:Emreemre1441@localhost:5432/fastapi") 
-        #TEST CONNECTIVITY
-        engine_connect = engine.connect()
-        result = engine_connect.execute(text("SELECT "))
-        print(result.scalar)
-        print("sqlalchemy -> postgress connection is established")
-        break
-    except Exception as error:
-        print("SQLalchemy -> Postgres DATABASE Connection failed")
-        print("Error :", error)
-        time.sleep(3)    
+        yield db
+    finally:
+        db.close()    
+    
+
+
+# while True:
+#     try:
+#         engine = create_engine("postgresql+psycopg://postgres:Emreemre1441@localhost:5432/fastapi") 
+#         #TEST CONNECTIVITY
+#         engine_connect = engine.connect()
+#         result = engine_connect.execute(text("SELECT "))
+#         print(result.scalar)
+#         print("sqlalchemy -> postgress connection is established")
+#         break
+#     except Exception as error:
+#         print("SQLalchemy -> Postgres DATABASE Connection failed")
+#         print("Error :", error)
+#         time.sleep(3)    
 
 
 
 
 
-# engine = create_engine("postgresql+psycopg://postgres:Emreemre1441@localhost:5432/fastapi")
-# # connectivity test
 
-# with engine.connect() as comm:
-#     result = comm.execute(text("SELECT 1"))
-#     print(result.scalar())
     
 
 
@@ -72,6 +85,13 @@ app = FastAPI()
 @app.get("/files/{file_path:path}")
 async def file_ops(file_path : str):
     return {"file_path": file_path} # --> if path parameter has / then files//home/main.py is possible -> unreachable
+
+#SQLalchemy setup TEST
+@app.get("/sqlalchemy")
+async def test_alchemy(db : Session = Depends(get_db)):
+    return {"Status" : "Succes"}
+
+
 
 #Get all posts
 @app.get("/posts")
