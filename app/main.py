@@ -5,7 +5,7 @@ from psycopg.rows import dict_row # To Return Column Names
 import time # to delay while
 from sqlalchemy.orm import Session
 from . import models
-from .database import engine, SessionLocal
+from .database import engine, get_db
 
 import sqlalchemy # ORM style database controller
 from sqlalchemy import create_engine, text # Object for establishing connection
@@ -17,15 +17,10 @@ from pydantic import BaseModel #Schema Check
 
 
 #Creates tables under models
-models.Base.metadata.create_all(bind=engine)
+models.Base.metadata.create_all(bind=engine) 
+#Base.metadata is collection of tables definitons that inherited from Base class class Name(Base)
 
-#Every time we get request. We will call this function to reach session
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()    
+
     
 
 
@@ -89,54 +84,81 @@ async def file_ops(file_path : str):
 #SQLalchemy setup TEST
 @app.get("/sqlalchemy")
 async def test_alchemy(db : Session = Depends(get_db)):
-    return {"Status" : "Succes"}
+    posts = db.query(models.Post).all()
+    return {"This is a test" : posts}
 
 
 
 #Get all posts
 @app.get("/posts")
-async def get_posts():
-    cursor.execute("""SELECT * FROM posts """) 
-    posts = cursor.fetchall()
+async def get_posts(db : Session = Depends(get_db)):
+    posts = db.query(models.Post).all()    
+    # cursor.execute("""SELECT * FROM posts """) 
+    # posts = cursor.fetchall()
     print(posts)
     return {"data" : posts} #auto serialazition 
 
 #Get certain post with id
 @app.get("/posts/{id}")
-async def get_post(id : int):
-
-    cursor.execute("""SELECT EXISTS (SELECT 1 FROM posts WHERE id = %s ) """, (id,)) # Returns dict true or false
-    result = cursor.fetchone()
-    exists = result['exists'] # --> boolean value
+async def get_post(id : int, db : Session = Depends(get_db)):
     
-    if exists:
-        #logic
-        cursor.execute("""SELECT * FROM posts WHERE id = %s """,(id,)) # Important to pass , after !!!
-        my_row = cursor.fetchone()
-        return {"The post : " : my_row}
-    else:
-        #error message no content with that ID    
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail= f"This {id} is not in the database")
+    post = db.query(models.Post).filter(models.Post.id == id).first() # Better than all() cuz it finishes search after first hit
+    
+    if not post : #Error Part
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"The ID: {id} is not valid")
+    else:        #No Error, RETURN
+        return {"The post is :" : post}    
+
+
+
+
+    # cursor.execute("""SELECT EXISTS (SELECT 1 FROM posts WHERE id = %s ) """, (id,)) # Returns dict true or false
+    # result = cursor.fetchone()
+    # exists = result['exists'] # --> boolean value
+    
+    # if exists:
+    #     #logic
+    #     cursor.execute("""SELECT * FROM posts WHERE id = %s """,(id,)) # Important to pass , after !!!
+    #     my_row = cursor.fetchone()
+    #     return {"The post : " : my_row}
+    # else:
+    #     #error message no content with that ID    
+    #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail= f"This {id} is not in the database")
         
     
     
 
 #Need to pass status code to path decorator
 @app.post("/posts", status_code=status.HTTP_201_CREATED)
-async def create_post(post : Post):
-    post_dict = post.model_dump()  # post -> dict
+async def create_post(post : Post, db: Session = Depends(get_db)):
+    
+    post_dict = post.model_dump()
+    new_post = models.Post(**post.model_dump()) # Using unpacking for dictionary ->'title':post.tile ->  title=post.title ** mapping is good for passing as parameter
+    db.add(new_post) # Saving Row to database
+    db.commit() # Comitting the change
+    db.refresh(new_post) # Getting back new_post / prevents Flushing
+    
+    
+    #with approach like you need to write as much code as your length of column numbers
+    # new_post = models.Post(title = post.title, content = post.content, published = post.published) #Returns a row to save later
+    return{"Succesful Add" : new_post}
+    
+    
+    ############################# RAW SQL IMPLEMENTATION  ######################################3
+    # post_dict = post.model_dump()  # post -> dict
         
-    title = post_dict["title"]      # Data Save
-    content = post_dict["content"]
-    published = post_dict["published"]
+    # title = post_dict["title"]      # Data Save
+    # content = post_dict["content"]
+    # published = post_dict["published"]
     
     
-    cursor.execute("""INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING *; """,(title, content, published)) # SQL Injection protected
+    # cursor.execute("""INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING *; """,(title, content, published)) # SQL Injection protected
     
-    new_post = cursor.fetchone() # Fetch returning data
-    conn.commit() # Commit database changes
+    # new_post = cursor.fetchone() # Fetch returning data
+    # conn.commit() # Commit database changes
     
-    return {"data" : new_post}        
+    # return {"data" : new_post}        
 
 
 #Delete spesific post
