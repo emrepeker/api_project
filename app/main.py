@@ -105,7 +105,7 @@ async def get_post(id : int, db : Session = Depends(get_db)):
     post = db.query(models.Post).filter(models.Post.id == id).first() # Better than all() cuz it finishes search after first hit
     
     if not post : #Error Part
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+        raise HTTPException(status_code = status.HTTP_404_NOT_FOUND,
                             detail=f"The ID: {id} is not valid")
     else:        #No Error, RETURN
         return {"The post is :" : post}    
@@ -163,39 +163,115 @@ async def create_post(post : Post, db: Session = Depends(get_db)):
 
 #Delete spesific post
 @app.delete("/posts/{id}", status_code=status.HTTP_202_ACCEPTED)
-async def delete_post(id : int):
-    cursor.execute("""DELETE FROM posts WHERE id = %s RETURNING *;""",(id,))
+async def delete_post(id : int, db : Session = Depends(get_db)):
     
-    deleted_post = cursor.fetchone()
-    conn.commit()
-    return {"Succesfully Deleted " : deleted_post }
+    
+    
+    post = db.query(models.Post).filter(models.Post.id == id)
+    
+    if post.first() == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"The ID: {id} is not valid")
+    
+    
+    post.delete(synchronize_session=False)
+    db.commit()
+    
+    
+    #No content Response
+    return Response(status_code=status.HTTP_204_NO_CONTENT)    
+    
+    ####################### RAW SQL  ####################
+    # cursor.execute("""DELETE FROM posts WHERE id = %s RETURNING *;""",(id,))
+    
+    # deleted_post = cursor.fetchone()
+    # conn.commit()
+    # return {"Succesfully Deleted " : deleted_post }
     
 
 
 #Update Spesific post
 @app.put("/posts/{id}")
-async def update_post(id :int, post : Post):
-    post_dict = post.model_dump()
-    cursor.execute("""UPDATE posts SET title = %s, content=%s, published=%s  WHERE id = %s  RETURNING *;""", (post_dict['title'], post_dict['content'],post_dict['published'] ,id))
+async def update_post(id :int, post : Post, db : Session = Depends(get_db)):
+    post_query = db.query(models.Post).filter(models.Post.id == id)
     
-    updated_post = cursor.fetchone()
-    conn.commit()
-    return {"This Post is updated" : updated_post}
+    if post_query.first() == None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"This ID: {id} is not valid")
+    post_dict = post.model_dump()    
+    
+    post_query.update(post_dict, synchronize_session=False) # need to pass dict
+    
+    db.commit()
+    
+    return {"Data : " : post_query.first()}
+    # post_dict = post.model_dump()
+    # models.Post.update().where(models.Post.id == id).values(**post_dict)
+    
+    # post_dict = post.model_dump()
+    # cursor.execute("""UPDATE posts SET title = %s, content=%s, published=%s  WHERE id = %s  RETURNING *;""", (post_dict['title'], post_dict['content'],post_dict['published'] ,id))
+    
+    # updated_post = cursor.fetchone()
+    # conn.commit()
+    # return {"This Post is updated" : updated_post}
     
 
 #Patch Spesific post
 @app.patch("/posts/{id}")      
-async def patch_post(id: int, post : dict = Body(...)):
-    print(post.keys())
+async def patch_post(id: int, post = Body(...), db : Session = Depends(get_db)):
+    ##UNSECURE##
+    # post = post.model_dump()
+    # #I belive this is unsecure any content of the post can be anyting
+    # post_query = db.query(models.Post).filter(models.Post.id == id)  #Getting the Row
     
-    #Update Given values
-    for column in post.keys():
-        cursor.execute(f"""UPDATE posts SET {column} = %s WHERE id = %s RETURNING *; """, (post[column],id))
-        print(column + " Succesfully updated")
+    # if post_query.first() is None:
+    #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+    #                         detail=f"The given id : {id} is not valid")
+    
+    # post_query.update(post,synchronize_session=False)
+    
+    # db.commit()
+    
+    
+    # return {"data": post_query.first() }
+
+
+    ###### Alternative Solution for security ####### Get all valid values
+    post_query = db.query(models.Post).filter(models.Post.id == id)
+    
+    
+    if post_query.first() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                           detail=f"The given id : {id} is not valid")
         
-    patched_post = cursor.fetchone()
-    conn.commit()
-    return {"This Post is Updated": patched_post}
+        
+    bucket_dict = {}
+    for a in Post.model_fields.keys(): 
+        if post.get(a) is not None:
+            bucket_dict[a] = post[a]
+            
+    post_query.update(bucket_dict,synchronize_session=False)
+    
+    db.commit()
+    
+    
+    return {"data": post_query.first() }        
+            
+    
+    
+    
+    
+    
+    # print(post.keys())
+    
+    # #Update Given values
+    # for column in post.keys():
+    #     cursor.execute(f"""UPDATE posts SET {column} = %s WHERE id = %s RETURNING *; """, (post[column],id))
+    #     print(column + " Succesfully updated")
+        
+    # patched_post = cursor.fetchone()
+    # conn.commit()
+    # return {"This Post is Updated": patched_post}
         
     
          
