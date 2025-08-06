@@ -4,17 +4,12 @@ import psycopg # Python -> PostgreSQL Connection Library
 from psycopg.rows import dict_row # To Return Column Names 
 import time # to delay while
 from sqlalchemy.orm import Session
-from . import models
+from . import models, schemas
 from .database import engine, get_db
+
 
 import sqlalchemy # ORM style database controller
 from sqlalchemy import create_engine, text # Object for establishing connection
-
-#############################################     
-from pydantic import BaseModel #Schema Check
-#############################################
-
-
 
 #Creates tables under models
 models.Base.metadata.create_all(bind=engine) 
@@ -50,7 +45,7 @@ while True:  # try until we get a database connection
     try:
         conn = psycopg.connect(host='localhost', dbname='fastapi', user='postgres', password='Emreemre1441', row_factory=dict_row) # Bad practice to push this git repo
         cursor = conn.cursor() # cursor is used to use database ops
-        print("Database connection is established")
+        print("Database connection is established POSTGRESS")
         break
     except Exception as error:
         print("Connection to database is failed")
@@ -61,14 +56,7 @@ while True:  # try until we get a database connection
 
 
 
-#Creating Schema pydantic BaseModel###########
-class Post(BaseModel):
-    title : str
-    content : str
-    published : bool =  True # defalult to  True if doesnt passed by user
 
-   
-##############################################    
 
     
     
@@ -81,26 +69,20 @@ app = FastAPI()
 async def file_ops(file_path : str):
     return {"file_path": file_path} # --> if path parameter has / then files//home/main.py is possible -> unreachable
 
-#SQLalchemy setup TEST
-@app.get("/sqlalchemy")
-async def test_alchemy(db : Session = Depends(get_db)):
-    posts = db.query(models.Post).all()
-    return {"This is a test" : posts}
-
 
 
 #Get all posts
 @app.get("/posts")
-async def get_posts(db : Session = Depends(get_db)):
+async def get_posts(db : Session = Depends(get_db)) -> list[schemas.Post]:
     posts = db.query(models.Post).all()    
     # cursor.execute("""SELECT * FROM posts """) 
     # posts = cursor.fetchall()
     print(posts)
-    return {"data" : posts} #auto serialazition 
+    return posts #auto serialazition 
 
 #Get certain post with id
 @app.get("/posts/{id}")
-async def get_post(id : int, db : Session = Depends(get_db)):
+async def get_post(id : int, db : Session = Depends(get_db)) -> schemas.Post:
     
     post = db.query(models.Post).filter(models.Post.id == id).first() # Better than all() cuz it finishes search after first hit
     
@@ -108,7 +90,8 @@ async def get_post(id : int, db : Session = Depends(get_db)):
         raise HTTPException(status_code = status.HTTP_404_NOT_FOUND,
                             detail=f"The ID: {id} is not valid")
     else:        #No Error, RETURN
-        return {"The post is :" : post}    
+        return post                              
+                                                                      
 
 
 
@@ -131,7 +114,7 @@ async def get_post(id : int, db : Session = Depends(get_db)):
 
 #Need to pass status code to path decorator
 @app.post("/posts", status_code=status.HTTP_201_CREATED)
-async def create_post(post : Post, db: Session = Depends(get_db)):
+async def create_post(post : schemas.PostCreate, db: Session = Depends(get_db)) -> schemas.Post:  # New version gets response models like this
     
     post_dict = post.model_dump()
     new_post = models.Post(**post.model_dump()) # Using unpacking for dictionary ->'title':post.tile ->  title=post.title ** mapping is good for passing as parameter
@@ -142,7 +125,7 @@ async def create_post(post : Post, db: Session = Depends(get_db)):
     
     #with approach like you need to write as much code as your length of column numbers
     # new_post = models.Post(title = post.title, content = post.content, published = post.published) #Returns a row to save later
-    return{"Succesful Add" : new_post}
+    return new_post
     
     
     ############################# RAW SQL IMPLEMENTATION  ######################################3
@@ -192,7 +175,7 @@ async def delete_post(id : int, db : Session = Depends(get_db)):
 
 #Update Spesific post
 @app.put("/posts/{id}")
-async def update_post(id :int, post : Post, db : Session = Depends(get_db)):
+async def update_post(id :int, post : schemas.PostCreate, db : Session = Depends(get_db)) -> schemas.Post:
     post_query = db.query(models.Post).filter(models.Post.id == id)
     
     if post_query.first() == None:
@@ -204,7 +187,7 @@ async def update_post(id :int, post : Post, db : Session = Depends(get_db)):
     
     db.commit()
     
-    return {"Data : " : post_query.first()}
+    return post_query.first()
     # post_dict = post.model_dump()
     # models.Post.update().where(models.Post.id == id).values(**post_dict)
     
@@ -246,7 +229,8 @@ async def patch_post(id: int, post = Body(...), db : Session = Depends(get_db)):
         
         
     bucket_dict = {}
-    for a in Post.model_fields.keys(): 
+    #complexity of this is O(keys)
+    for a in schemas.PostCreate.model_fields.keys(): 
         if post.get(a) is not None:
             bucket_dict[a] = post[a]
             
@@ -255,32 +239,5 @@ async def patch_post(id: int, post = Body(...), db : Session = Depends(get_db)):
     db.commit()
     
     
-    return {"data": post_query.first() }        
-            
-    
-    
-    
-    
-    
-    # print(post.keys())
-    
-    # #Update Given values
-    # for column in post.keys():
-    #     cursor.execute(f"""UPDATE posts SET {column} = %s WHERE id = %s RETURNING *; """, (post[column],id))
-    #     print(column + " Succesfully updated")
-        
-    # patched_post = cursor.fetchone()
-    # conn.commit()
-    # return {"This Post is Updated": patched_post}
-        
-    
-         
-        
-         
-        
-    
-
-
-
-
+    return  post_query.first()       
 
