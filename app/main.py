@@ -239,5 +239,21 @@ async def patch_post(id: int, post = Body(...), db : Session = Depends(get_db)):
     db.commit()
     
     
-    return  post_query.first()       
+    return  post_query.first()    
 
+
+## USER API ##
+
+@app.post('/users', status_code=status.HTTP_201_CREATED)
+async def create_user(user : schemas.UserCreate, db : Session = Depends(get_db)) -> schemas.UserOut: 
+    user_dict = user.model_dump()
+    new_user = models.Users(**user_dict)
+    
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+
+
+
+    return new_user

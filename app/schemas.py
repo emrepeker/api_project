@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from datetime import datetime
 
 
@@ -21,4 +21,27 @@ class Post(PostBase):
     id : int
     created_at : datetime  
     class Config:
+        from_attributes = True
+        
+        
+        
+        
+## USER SCHEMAS ##
+
+class User(BaseModel):
+    email : EmailStr
+    password : str
+    
+    
+class UserCreate(User):
+    pass
+
+
+### USER RESPONSE ##
+
+class UserOut(BaseModel):
+    email : EmailStr
+    id : int
+    created_at : datetime
+    class Congif:
         from_attributes = True
