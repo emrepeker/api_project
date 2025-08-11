@@ -45,3 +45,4 @@ class UserOut(BaseModel):
     created_at : datetime
     class Congif:
         from_attributes = True
+   
