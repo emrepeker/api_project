@@ -1,6 +1,6 @@
 from fastapi import Response, HTTPException, status, Depends, APIRouter
 from fastapi.params import Body
-from .. import schemas, models
+from .. import schemas, models, oauth
 from ..database import get_db
 from sqlalchemy.orm import Session
 
@@ -20,7 +20,7 @@ async def get_posts(db : Session = Depends(get_db)) -> list[schemas.Post]:
 
 #Get certain post with id
 @router.get("/{id}")
-async def get_post(id : int, db : Session = Depends(get_db)) -> schemas.Post:
+async def get_post(id : int, db : Session = Depends(get_db),user_id : int = Depends(oauth.get_current_user)) -> schemas.Post:
     
     post = db.query(models.Post).filter(models.Post.id == id).first() # Better than all() cuz it finishes search after first hit
     
@@ -51,9 +51,9 @@ async def get_post(id : int, db : Session = Depends(get_db)) -> schemas.Post:
     
 
 #Need to pass status code to path decorator
-@router.post("/", status_code=status.HTTP_201_CREATED)
-async def create_post(post : schemas.PostCreate, db: Session = Depends(get_db)) -> schemas.Post:  # New version gets response models like this
-    
+@router.post("/", status_code=status.HTTP_201_CREATED)                                          #Creates Dependecy for tokens
+async def create_post(post : schemas.PostCreate, db: Session = Depends(get_db), user_id : int = Depends(oauth.get_current_user)) -> schemas.Post:  # New version gets response models like this
+    print(user_id) # We can reach this 
     post_dict = post.model_dump()
     new_post = models.Post(**post.model_dump()) # Using unpacking for dictionary ->'title':post.tile ->  title=post.title ** mapping is good for passing as parameter
     db.add(new_post) # Saving Row to database
@@ -84,7 +84,7 @@ async def create_post(post : schemas.PostCreate, db: Session = Depends(get_db)) 
 
 #Delete spesific post
 @router.delete("/{id}", status_code=status.HTTP_202_ACCEPTED)
-async def delete_post(id : int, db : Session = Depends(get_db)):
+async def delete_post(id : int, db : Session = Depends(get_db),user_id : int = Depends(oauth.get_current_user)):
     
     
     
@@ -113,7 +113,7 @@ async def delete_post(id : int, db : Session = Depends(get_db)):
 
 #Update Spesific post
 @router.put("/{id}")
-async def update_post(id :int, post : schemas.PostCreate, db : Session = Depends(get_db)) -> schemas.Post:
+async def update_post(id :int, post : schemas.PostCreate, db : Session = Depends(get_db),user_id : int = Depends(oauth.get_current_user)) -> schemas.Post:
     post_query = db.query(models.Post).filter(models.Post.id == id)
     
     if post_query.first() == None:
@@ -139,7 +139,7 @@ async def update_post(id :int, post : schemas.PostCreate, db : Session = Depends
 
 #Patch Spesific post
 @router.patch("/{id}")      
-async def patch_post(id: int, post = Body(...), db : Session = Depends(get_db)):
+async def patch_post(id: int, post = Body(...), db : Session = Depends(get_db),user_id : int = Depends(oauth.get_current_user)):
     ##UNSECURE##
     # post = post.model_dump()
     # #I belive this is unsecure any content of the post can be anyting

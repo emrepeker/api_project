@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
+from typing import Optional
 
 
 #Creating Schema pydantic BaseModel###########
@@ -45,4 +46,16 @@ class UserOut(BaseModel):
     created_at : datetime
     class Congif:
         from_attributes = True
+        
+## Login
+class LoginCredential(BaseModel):
+    email : EmailStr
+    password : str
+
+class Token(BaseModel):
+    acces_token : str 
+    token_type : str
+
+class TokenData(BaseModel):
+    id : Optional[int] = None 
    

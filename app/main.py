@@ -6,7 +6,7 @@ import time # to delay while
 from sqlalchemy.orm import Session
 from . import models, schemas, utils
 from .database import engine, get_db
-from .router import post, user
+from .router import post, user, login
 
 
 
@@ -72,6 +72,7 @@ app = FastAPI()
 router = APIRouter()
 app.include_router(post.router)
 app.include_router(user.router)
+app.include_router(login.router)
 
 
 #Path parameter : type -> path
